@@ -175,7 +175,7 @@ $totalGeral = array_sum(array_column($itens,'orcamentovalortotal'));
         <p>Desenvolvido por <strong><a href="https://erwise.com.br" target="_blank">erwise.com.br</a></strong></p>
         <div>
             <a href="https://www.instagram.com/erwisedev" class="mx-2"><i class="bi bi-instagram"></i></a>
-            <a href="https://api.whatsapp.com/send?phone=5511934008521" class="mx-2"><i class="bi bi-whatsapp"></i></a>
+           
         </div>
     </div>
 </div>
