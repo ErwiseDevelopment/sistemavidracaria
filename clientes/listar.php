@@ -79,7 +79,7 @@ $clientes = $sql->fetchAll();
                                 </td>
                                 <td>
                                     <?php if($waNumber): ?>
-                                        <a href="https://wa.me/55<?= $waNumber ?>" target="_blank" class="text-decoration-none text-success fw-bold small">
+                                        <a href="https://wa.me/+55<?= $waNumber ?>" target="_blank" class="text-decoration-none text-success fw-bold small">
                                             <i class="bi bi-whatsapp me-1"></i><?= htmlspecialchars($c['clientewhatsapp'] ?? '') ?>
                                         </a>
                                     <?php else: ?>

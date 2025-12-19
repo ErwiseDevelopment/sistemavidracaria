@@ -134,7 +134,7 @@ $pedidosProducao = $pdo->query("SELECT COUNT(*) FROM pedido WHERE pedidosituacao
             <div class="d-flex align-items-center">
                 <small class="text-muted me-2"><i class="bi bi-whatsapp me-1 text-success"></i><?= $inst['clientewhatsapp'] ?></small>
                 <?php if($waNumber): ?>
-                    <a href="https://wa.me/55<?= $waNumber ?>" target="_blank" class="badge bg-success-subtle text-success text-decoration-none border-success border">
+                    <a href="https://wa.me/+55<?= $waNumber ?>" target="_blank" class="badge bg-success-subtle text-success text-decoration-none border-success border">
                         <i class="bi bi-chat-dots"></i> Chamar
                     </a>
                 <?php endif; ?>

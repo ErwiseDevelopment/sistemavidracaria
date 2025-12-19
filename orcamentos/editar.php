@@ -118,7 +118,7 @@ require_once "../includes/menu.php";
                             $numeroWA = preg_replace('/\D/', '', $orcamento['clientewhatsapp']);
                             $linkPublico = BASE_URL . "/public/orcamento.php?c=" . $orcamento['orcamentolinkaprovacao'];
                             $textoMensagem = "Olá, segue o link do seu orçamento: " . $linkPublico;
-                            $linkWA = "https://wa.me/{$numeroWA}?text=" . urlencode($textoMensagem);
+                            $linkWA = "https://wa.me/+55{$numeroWA}?text=" . urlencode($textoMensagem);
                         ?>
                             <a href="<?= $linkWA ?>" target="_blank" class="btn btn-success"><i class="bi bi-whatsapp"></i> Enviar</a>
                         <?php endif; ?>
