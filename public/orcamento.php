@@ -162,12 +162,7 @@ $totalGeral = array_sum(array_column($itens,'orcamentovalortotal'));
                 </div>
             </div>
 
-            <div class="mt-4">
-                <a href="https://api.whatsapp.com/send?phone=5511994507922&text=Olá, gostaria de aprovar meu orçamento de número <?= $orcamento['orcamentocodigo'] ?>!" class="btn btn-approve">
-                    <i class="bi bi-whatsapp me-2"></i> APROVAR ORÇAMENTO AGORA
-                </a>
-                <p class="text-center mt-3 small text-muted">Válido até: <?= date('d/m/Y', strtotime('+7 days', strtotime($orcamento['orcamentodatacriacao']))) ?></p>
-            </div>
+            
         </div>
     </div>
 
