@@ -17,77 +17,88 @@ $sqlInstalacao->execute([$hoje]);
 $proximasInstalacoes = $sqlInstalacao->fetchAll();
 
 // 2. Estatísticas para os Cards
-// Orçamentos criados (para acompanhamento de vendas)
 $totalOrcamentos = $pdo->query("SELECT COUNT(*) FROM orcamento WHERE orcamentosituacao = 'Criado'")->fetchColumn();
-
-// Pedidos que estão atualmente em produção
 $pedidosProducao = $pdo->query("SELECT COUNT(*) FROM pedido WHERE pedidosituacao = 'Produção'")->fetchColumn();
 
+// 3. Faturamento: Soma de pedidos que NÃO estão cancelados (Considerando o mês atual)
+$inicioMes = date('Y-m-01');
+$fimMes = date('Y-m-t');
+$sqlFaturamento = $pdo->prepare("
+    SELECT SUM(pedidototal) 
+    FROM pedido 
+    WHERE pedidosituacao <> 'Cancelado' 
+    AND pedidoprevisaoentrega BETWEEN ? AND ?
+");
+$sqlFaturamento->execute([$inicioMes, $fimMes]);
+$faturamentoMes = $sqlFaturamento->fetchColumn() ?: 0;
 ?>
 
 <style>
-    body { background-color: #f8f9fc; font-family: 'Nunito', sans-serif; }
-    .card-stat { border: none; border-left: 4px solid; border-radius: 10px; transition: all 0.3s; }
-    .card-stat:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important; }
+    body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; }
     
-    .bg-gradient-primary { background: linear-gradient(135deg, #4e73df 0%, #224abe 100%); }
-    .icon-box { width: 45px; height: 45px; background: rgba(0,0,0,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    /* Cards de Estatísticas */
+    .card-stat { border: none; border-radius: 16px; transition: all 0.3s ease; overflow: hidden; }
+    .card-stat:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
     
-    .table-agenda thead th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #4e73df; border-top: none; }
-    .btn-quick { border-radius: 10px; padding: 15px; text-align: center; transition: all 0.2s; border: 1px solid #e3e6f0; background: #fff; color: #4e73df; text-decoration: none; }
-    .btn-quick:hover { background: #4e73df; color: #fff; }
+    .icon-shape { width: 48px; height: 48px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+
+    .bg-gradient-blue { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; }
+    .bg-gradient-cyan { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; }
+    .bg-gradient-emerald { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; }
+
+    /* Ações Rápidas */
+    .btn-quick { border: 1px solid #e2e8f0; background: #fff; padding: 20px; border-radius: 16px; text-align: center; color: #334155; text-decoration: none; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .btn-quick i { font-size: 1.8rem; color: #38bdf8; }
+    .btn-quick:hover { border-color: #38bdf8; background: #f0f9ff; transform: scale(1.02); }
+
+    /* Estilo para Mobile Cards (substitui a tabela em telas pequenas) */
+    @media (max-width: 767.98px) {
+        .mobile-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid #4361ee;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .desktop-table { display: none; }
+    }
+
+    @media (min-width: 768px) {
+        .mobile-view { display: none; }
+    }
 </style>
 
 <div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="fw-bold text-dark mb-0">Olá, <?= explode(' ', $_SESSION['usuario_nome'])[0]; ?>!</h3>
-            <p class="text-muted mb-0">Aqui está o resumo da Visa Vidros para hoje.</p>
-        </div>
-        <div class="text-end">
-            <span class="badge bg-white text-primary shadow-sm p-3 border">
-                <i class="bi bi-calendar3 me-2"></i><?= date('d/m/Y'); ?>
-            </span>
+    <div class="row align-items-center mb-4 g-3">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-dark mb-1">Painel de Controle</h2>
+            <p class="text-muted mb-0">Olá, <strong><?= explode(' ', $_SESSION['usuario_nome'])[0]; ?></strong>. Resumo da Visa Vidros.</p>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-5">
         <div class="col-md-4">
-            <div class="card card-stat shadow-sm h-100 py-2 border-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Orçamentos Pendentes</div>
-                            <div class="h4 mb-0 fw-bold text-dark"><?= $totalOrcamentos ?></div>
-                        </div>
-                        <div class="icon-box"><i class="bi bi-file-earmark-text text-primary fs-4"></i></div>
-                    </div>
+            <div class="card card-stat bg-gradient-blue shadow-sm">
+                <div class="card-body p-4 text-center text-md-start">
+                    <p class="text-white-50 small fw-bold text-uppercase mb-1">Orçamentos Abertos</p>
+                    <h2 class="mb-0 fw-bold"><?= $totalOrcamentos ?></h2>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card card-stat shadow-sm h-100 py-2 border-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Em Produção</div>
-                            <div class="h4 mb-0 fw-bold text-dark"><?= $pedidosProducao ?></div>
-                        </div>
-                        <div class="icon-box"><i class="bi bi-tools text-warning fs-4"></i></div>
-                    </div>
+            <div class="card card-stat bg-gradient-cyan shadow-sm">
+                <div class="card-body p-4 text-center text-md-start">
+                    <p class="text-white-50 small fw-bold text-uppercase mb-1">Em Produção</p>
+                    <h2 class="mb-0 fw-bold"><?= $pedidosProducao ?></h2>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card card-stat shadow-sm h-100 py-2 border-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Faturamento (Mês)</div>
-                            <div class="h4 mb-0 fw-bold text-dark">R$ <?= number_format($faturamentoMes ?? 0, 2, ',', '.') ?></div>
-                        </div>
-                        <div class="icon-box"><i class="bi bi-cash-stack text-success fs-4"></i></div>
-                    </div>
+            <div class="card card-stat bg-gradient-emerald shadow-sm">
+                <div class="card-body p-4 text-center text-md-start">
+                    <p class="text-white-50 small fw-bold text-uppercase mb-1">Faturamento Mês</p>
+                    <h2 class="mb-0 fw-bold">R$ <?= number_format($faturamentoMes, 2, ',', '.') ?></h2>
                 </div>
             </div>
         </div>
@@ -95,97 +106,84 @@ $pedidosProducao = $pdo->query("SELECT COUNT(*) FROM pedido WHERE pedidosituacao
 
     <div class="row g-4">
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h6 class="m-0 fw-bold text-primary"><i class="bi bi-truck me-2"></i>Agenda de Instalações</h6>
-                    <span class="badge bg-primary-subtle text-primary"><?= count($proximasInstalacoes) ?> agendadas</span>
-                </div>
+            <h5 class="fw-bold mb-3"><i class="bi bi-truck me-2"></i>Agenda de Instalações</h5>
+            
+            <div class="desktop-table card border-0 shadow-sm rounded-4">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-agenda table-hover align-middle mb-0">
-                            <thead>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th class="ps-3">Data</th>
+                                    <th class="ps-4">Data/Hora</th>
                                     <th>Cliente</th>
                                     <th>Pedido</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-end pe-4">Ação</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if(!$proximasInstalacoes): ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center py-5 text-muted">
-                                            <i class="bi bi-calendar-check fs-2 d-block mb-2"></i>
-                                            Sem instalações previstas a partir de hoje.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach($proximasInstalacoes as $inst): 
-    // Limpa o número para o link do WhatsApp (mantém apenas números)
-    $waNumber = preg_replace('/\D/', '', $inst['clientewhatsapp']);
-?>
-    <tr>
-        <td class="ps-3">
-            <div class="fw-bold"><?= date('d/m/Y', strtotime($inst['pedidoprevisaoentrega'])) ?></div>
-            <small class="text-muted"><?= date('H:i', strtotime($inst['pedidoprevisaoentrega'])) == '00:00' ? 'Hora não definida' : date('H:i', strtotime($inst['pedidoprevisaoentrega'])) ?></small>
-        </td>
-        <td>
-            <div class="fw-bold text-dark"><?= htmlspecialchars($inst['clientenomecompleto']) ?></div>
-            <div class="d-flex align-items-center">
-                <small class="text-muted me-2"><i class="bi bi-whatsapp me-1 text-success"></i><?= $inst['clientewhatsapp'] ?></small>
-                <?php if($waNumber): ?>
-                    <a href="https://wa.me/+55<?= $waNumber ?>" target="_blank" class="badge bg-success-subtle text-success text-decoration-none border-success border">
-                        <i class="bi bi-chat-dots"></i> Chamar
-                    </a>
-                <?php endif; ?>
-            </div>
-        </td>
-        <td><span class="badge bg-light text-dark border">#<?= $inst['pedidocodigo'] ?></span></td>
-        <td class="text-center">
-            <div class="btn-group">
-                <a href="pedidos/imprimir.php?id=<?= $inst['pedidocodigo'] ?>" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimir Ordem">
-                    <i class="bi bi-printer"></i>
-                </a>
-                <a href="pedidos/editar.php?id=<?= $inst['pedidocodigo'] ?>" class="btn btn-sm btn-primary">
-                    Gerir
-                </a>
-            </div>
-        </td>
-    </tr>
-<?php endforeach; ?>
-                                <?php endif; ?>
+                                <?php foreach($proximasInstalacoes as $inst): ?>
+                                <tr>
+                                    <td class="ps-4"><strong><?= date('d/m/Y', strtotime($inst['pedidoprevisaoentrega'])) ?></strong></td>
+                                    <td><?= htmlspecialchars($inst['clientenomecompleto']) ?></td>
+                                    <td><span class="badge bg-light text-dark border">#<?= $inst['pedidocodigo'] ?></span></td>
+                                    <td class="text-end pe-4"><a href="pedidos/editar.php?id=<?= $inst['pedidocodigo'] ?>" class="btn btn-sm btn-primary rounded-pill">Gerenciar</a></td>
+                                </tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
+            <div class="mobile-view">
+                <?php if(!$proximasInstalacoes): ?>
+                    <div class="text-center p-4 bg-white rounded shadow-sm">
+                        <p class="text-muted mb-0">Nenhuma instalação para hoje.</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach($proximasInstalacoes as $inst): 
+                        $waNumber = preg_replace('/\D/', '', $inst['clientewhatsapp']);
+                    ?>
+                        <div class="mobile-card shadow-sm">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <small class="text-primary fw-bold"><?= date('d/m/Y H:i', strtotime($inst['pedidoprevisaoentrega'])) ?></small>
+                                    <h6 class="fw-bold mb-1 mt-1 text-dark"><?= htmlspecialchars($inst['clientenomecompleto']) ?></h6>
+                                    <p class="mb-2 small text-muted">Pedido #<?= $inst['pedidocodigo'] ?></p>
+                                </div>
+                                <a href="https://wa.me/+55<?= $waNumber ?>" class="btn btn-success btn-sm rounded-circle"><i class="bi bi-whatsapp"></i></a>
+                            </div>
+                            <div class="d-grid mt-2">
+                                <a href="pedidos/editar.php?id=<?= $inst['pedidocodigo'] ?>" class="btn btn-outline-primary btn-sm rounded-pill">Ver Detalhes</a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="col-lg-4">
             <h6 class="fw-bold text-dark mb-3">Ações Rápidas</h6>
-            <div class="d-grid gap-2">
-                <a href="orcamentos/criar.php" class="btn-quick shadow-sm d-flex align-items-center justify-content-center fw-bold">
-                    <i class="bi bi-plus-circle-fill me-2"></i> Novo Orçamento
-                </a>
-                <a href="clientes/listar.php" class="btn-quick shadow-sm d-flex align-items-center justify-content-center fw-bold">
-                    <i class="bi bi-person-plus-fill me-2"></i> Gerir Clientes
-                </a>
-                <a href="produtos/listar.php" class="btn-quick shadow-sm d-flex align-items-center justify-content-center fw-bold">
-                    <i class="bi bi-box-seam-fill me-2"></i> Ver Estoque
-                </a>
+            <div class="row g-2">
+                <div class="col-6">
+                    <a href="orcamentos/criar.php" class="btn-quick shadow-sm text-decoration-none">
+                        <i class="bi bi-file-earmark-plus"></i>
+                        <span class="small fw-bold">Novo Orçamento</span>
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="pedidos/listar.php" class="btn-quick shadow-sm text-decoration-none">
+                        <i class="bi bi-cart-plus"></i>
+                        <span class="small fw-bold">Ver Pedidos</span>
+                    </a>
+                </div>
             </div>
-
-            <div class="card mt-4 bg-gradient-primary text-white border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-8">
-                            <h6 class="fw-bold mb-1">Dica do Sistema</h6>
-                            <p class="small mb-0 opacity-75">Sempre atualize o status para 'Finalizado' após a instalação para baixar o faturamento corretamente.</p>
-                        </div>
-                        <div class="col-4 text-end">
-                            <i class="bi bi-lightbulb fs-1 opacity-25"></i>
-                        </div>
-                    </div>
+            
+            <div class="card mt-4 border-0 shadow-sm rounded-4 bg-primary text-white">
+                <div class="card-body p-4 text-center">
+                    <h6 class="fw-bold mb-1">Deseja ajuda?</h6>
+                    <p class="small opacity-75">Suporte rápido disponível.</p>
+                    <a href="https://wa.me/5511934008521" class="btn btn-light btn-sm rounded-pill px-4 fw-bold">WhatsApp</a>
                 </div>
             </div>
         </div>
