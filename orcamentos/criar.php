@@ -135,11 +135,12 @@ require_once "../includes/menu.php";
                                 <option>Cartão de Crédito</option>
                                 <option>Cartão de Débito</option>
                                 <option>Boleto</option>
+                                <option>Parcelado</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="small fw-bold text-primary">WhatsApp</label>
-                            <input type="text" name="clientewhatsapp" id="clientewhatsapp" class="form-control fw-bold border-primary" placeholder="(00) 00000-0000">
+                            <input type="number" name="clientewhatsapp" id="clientewhatsapp" class="form-control fw-bold border-primary" placeholder="(00) 00000-0000">
                         </div>
                         <div class="col-md-8">
                             <div class="d-flex justify-content-between align-items-end">
