@@ -18,12 +18,10 @@ if($f_id){
     $where[] = "p.pedidocodigo = ?";
     $params[] = $f_id;
 }
-
 if($f_status){
     $where[] = "p.pedidosituacao = ?";
     $params[] = $f_status;
 }
-
 if($f_busca){
     $where[] = "c.clientenomecompleto LIKE ?";
     $params[] = "%$f_busca%";
@@ -43,64 +41,112 @@ $sql .= " ORDER BY p.pedidocodigo DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$pedidos = $stmt->fetchAll();
+$pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$totalPedidos = count($pedidos);
 $statusDisponiveis = ['Criado','Produção','Instalação','Finalizado','Cancelado'];
 ?>
 
 <style>
-    body { background-color: #f8f9fc; }
+    :root {
+        --primary: #4361ee;
+        --success: #2ec4b6;
+        --danger: #e71d36;
+        --warning: #ff9f1c;
+        --dark: #011627;
+        --light-bg: #f8f9fd;
+    }
+
+    body { background-color: var(--light-bg); font-family: 'Inter', sans-serif; }
+
+    /* Header */
     .page-header { background: #fff; padding: 1.2rem; border-bottom: 1px solid #e3e6f0; margin-bottom: 1.5rem; }
-    .card-filter { border: none; border-radius: 10px; background-color: #fff; box-shadow: 0 0.15rem 1rem 0 rgba(0,0,0,0.05); }
-    
-    .table thead th { 
-        background-color: #f8f9fc; 
-        text-transform: uppercase; 
-        font-size: 0.7rem; 
-        color: #4e73df; 
-        letter-spacing: 0.05rem;
+
+    /* Filtros */
+    .filter-section {
+        background: white;
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        margin-bottom: 2rem;
     }
 
-    /* Cores de Status seguindo o padrão */
-    .status-badge { padding: 0.4em 0.8em; border-radius: 50rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-    .badge-Criado { background-color: #858796; color: #fff; }
-    .badge-Produção { background-color: #f6c23e; color: #fff; }
-    .badge-Instalação { background-color: #36b9cc; color: #fff; }
-    .badge-Finalizado { background-color: #1cc88a; color: #fff; }
-    .badge-Cancelado { background-color: #e74a3b; color: #fff; }
-
-    /* Botões de Ação Quadrados como no Orçamento */
-    .btn-action { 
-        width: 35px; height: 35px; 
-        display: inline-flex; align-items: center; justify-content: center; 
-        border-radius: 8px; transition: 0.2s; text-decoration: none; border: none;
+    /* Badges Estilizados */
+    .status-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 10px;
+        letter-spacing: 0.5px;
+        display: inline-block;
     }
-    .btn-view { background-color: #f0f3ff; color: #4e73df !important; }
-    .btn-edit { background-color: #fff4e5; color: #ff9800 !important; }
-    .btn-whatsapp { background-color: #25D366; color: #fff !important; }
-    
-    .btn-action:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    /* Cores personalizadas para Pedidos */
+    .badge-Criado { background-color: #f1f5f9; color: #475569; }
+    .badge-Produção { background-color: #fef3c7; color: #d97706; }
+    .badge-Instalação { background-color: #e0f2fe; color: #0284c7; }
+    .badge-Finalizado { background-color: #dcfce7; color: #16a34a; }
+    .badge-Cancelado { background-color: #fee2e2; color: #dc2626; }
+
+    /* Card Mobile */
+    .order-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid rgba(0,0,0,0.03);
+        padding: 1.5rem;
+        margin-bottom: 1.2rem;
+        transition: all 0.3s ease;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .order-number { background: #f0f3ff; color: var(--primary); font-weight: 800; padding: 6px 14px; border-radius: 12px; font-size: 0.9rem; }
+    .client-name { font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 5px; }
+    .order-info { font-size: 0.85rem; color: #64748b; margin-bottom: 10px; }
+    .order-total { font-size: 1.2rem; font-weight: 800; color: var(--dark); display: block; margin-top: 10px; }
+
+    /* Ações */
+    .action-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 1.2rem;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 1.2rem;
+    }
+    .btn-circle {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: 0.2s;
+    }
+    .btn-wa { background: #25D366; color: white !important; }
+    .btn-vi { background: #f0f3ff; color: var(--primary) !important; }
+    .btn-ed { background: #fff7ed; color: #ea580c !important; }
+
+    /* Visibilidade por dispositivo */
+    @media (max-width: 768px) { .desktop-table { display: none; } }
+    @media (min-width: 769px) { .mobile-list { display: none; } }
 </style>
 
 <div class="page-header shadow-sm">
     <div class="container d-flex justify-content-between align-items-center">
-        <div>
-            <h4 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2"></i>Pedidos</h4>
-        </div>
-        
+        <h4 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam me-2"></i>Pedidos</h4>
+        <div class="text-muted small d-none d-md-block">Total: <strong><?= count($pedidos) ?></strong> pedidos</div>
     </div>
 </div>
 
 <div class="container">
-    <div class="card card-filter mb-4">
-        <div class="card-body">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-2">
+    <div class="card filter-section shadow-sm">
+        <div class="card-body p-4">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-2 col-6">
                     <label class="small fw-bold text-muted">Nº Pedido</label>
                     <input type="number" name="f_id" class="form-control form-control-sm" placeholder="Ex: 501" value="<?= htmlspecialchars($f_id) ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-3 col-6">
                     <label class="small fw-bold text-muted">Situação</label>
                     <select name="situacao" class="form-select form-select-sm">
                         <option value="">Todas</option>
@@ -109,78 +155,84 @@ $statusDisponiveis = ['Criado','Produção','Instalação','Finalizado','Cancela
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4 col-12">
                     <label class="small fw-bold text-muted">Cliente</label>
                     <input type="text" name="busca" class="form-control form-control-sm" placeholder="Nome do cliente..." value="<?= htmlspecialchars($f_busca) ?>">
                 </div>
                 <div class="col-md-3 d-flex gap-1">
                     <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold">Filtrar</button>
                     <?php if($f_id || $f_status || $f_busca): ?>
-                        <a href="listar.php" class="btn btn-outline-danger btn-sm" title="Limpar"><i class="bi bi-trash"></i></a>
+                        <a href="listar.php" class="btn btn-outline-danger btn-sm px-3"><i class="bi bi-trash"></i></a>
                     <?php endif; ?>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm overflow-hidden">
+    <div class="mobile-list">
+        <?php foreach($pedidos as $p): 
+            $whatsapp = preg_replace('/\D/', '', $p['clientewhatsapp'] ?? '');
+            $urlWhats = "https://api.whatsapp.com/send?phone=55{$whatsapp}";
+        ?>
+            <div class="order-card">
+                <div class="order-header">
+                    <span class="order-number">#<?= $p['pedidocodigo'] ?></span>
+                    <span class="status-badge badge-<?= $p['pedidosituacao'] ?>"><?= $p['pedidosituacao'] ?></span>
+                </div>
+                <div class="client-name"><?= htmlspecialchars($p['clientenomecompleto']) ?></div>
+                <div class="order-info">
+                    <div><i class="bi bi-calendar-event me-1"></i> Entrega: <?= $p['pedidoprevisaoentrega'] ? date('d/m/Y', strtotime($p['pedidoprevisaoentrega'])) : '--/--/----' ?></div>
+                    <div class="text-muted small"><i class="bi bi-whatsapp me-1"></i> <?= $p['clientewhatsapp'] ?></div>
+                </div>
+                <div class="order-total">R$ <?= number_format($p['pedidototal'], 2, ',', '.') ?></div>
+                
+                <div class="action-group">
+                    <?php if($whatsapp): ?>
+                        <a href="<?= $urlWhats ?>" target="_blank" class="btn-circle btn-wa"><i class="bi bi-whatsapp"></i></a>
+                    <?php endif; ?>
+                    <a href="editar.php?id=<?= $p['pedidocodigo'] ?>" class="btn-circle btn-ed"><i class="bi bi-pencil"></i></a>
+                    <a href="visualizar.php?id=<?= $p['pedidocodigo'] ?>" class="btn-circle btn-vi"><i class="bi bi-eye"></i></a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="desktop-table card border-0 shadow-sm overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead>
+                <thead class="bg-light">
                     <tr>
-                        <th class="ps-4 text-center" width="80">Nº</th>
+                        <th class="ps-4 text-center">Nº</th>
                         <th>Cliente</th>
                         <th class="text-center">Situação</th>
                         <th>Previsão Entrega</th>
                         <th class="text-end">Total</th>
-                        <th class="text-center" width="180">Ações</th>
+                        <th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if(!$pedidos): ?>
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="bi bi-search fs-2 d-block mb-2 opacity-50"></i>
-                                Nenhum pedido encontrado.
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-
                     <?php foreach($pedidos as $p): 
                         $whatsapp = preg_replace('/\D/', '', $p['clientewhatsapp'] ?? '');
-                        $urlWhats = "https://api.whatsapp.com/send?phone=55{$whatsapp}";
                     ?>
                         <tr>
                             <td class="ps-4 text-center fw-bold text-primary">#<?= $p['pedidocodigo'] ?></td>
                             <td>
                                 <div class="fw-bold text-dark"><?= htmlspecialchars($p['clientenomecompleto']) ?></div>
-                                <div class="text-muted small" style="font-size: 0.7rem;"><i class="bi bi-whatsapp me-1"></i><?= $p['clientewhatsapp'] ?></div>
+                                <div class="text-muted small" style="font-size: 0.75rem;"><i class="bi bi-whatsapp me-1"></i><?= $p['clientewhatsapp'] ?></div>
                             </td>
                             <td class="text-center">
-                                <span class="status-badge badge-<?= $p['pedidosituacao'] ?>">
-                                    <?= $p['pedidosituacao'] ?>
-                                </span>
+                                <span class="status-badge badge-<?= $p['pedidosituacao'] ?>"><?= $p['pedidosituacao'] ?></span>
                             </td>
                             <td class="small text-muted">
                                 <i class="bi bi-calendar-event me-1"></i>
                                 <?= $p['pedidoprevisaoentrega'] ? date('d/m/Y', strtotime($p['pedidoprevisaoentrega'])) : '--/--/----' ?>
                             </td>
-                            <td class="text-end fw-bold text-dark">
-                                R$ <?= number_format($p['pedidototal'], 2, ",", ".") ?>
-                            </td>
+                            <td class="text-end fw-bold">R$ <?= number_format($p['pedidototal'], 2, ',', '.') ?></td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <?php if($whatsapp): ?>
-                                        <a href="<?= $urlWhats ?>" target="_blank" class="btn-action btn-whatsapp" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
-                                    <?php endif; ?>
-                                    
-                                    <a href="visualizar.php?id=<?= $p['pedidocodigo'] ?>" class="btn-action btn-view" title="Ver Detalhes">
-                                        <i class="bi bi-eye-fill"></i>
-                                    </a>
-                                    
-                                    <a href="editar.php?id=<?= $p['pedidocodigo'] ?>" class="btn-action btn-edit" title="Editar">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
+                                    <a href="https://api.whatsapp.com/send?phone=55<?= $whatsapp ?>" target="_blank" class="btn btn-sm btn-light text-success"><i class="bi bi-whatsapp"></i></a>
+                                    <a href="visualizar.php?id=<?= $p['pedidocodigo'] ?>" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i></a>
+                                    <a href="editar.php?id=<?= $p['pedidocodigo'] ?>" class="btn btn-sm btn-light text-warning"><i class="bi bi-pencil"></i></a>
                                 </div>
                             </td>
                         </tr>
@@ -189,6 +241,13 @@ $statusDisponiveis = ['Criado','Produção','Instalação','Finalizado','Cancela
             </table>
         </div>
     </div>
+
+    <?php if(empty($pedidos)): ?>
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-search fs-1 opacity-25 d-block mb-3"></i>
+            Nenhum pedido encontrado.
+        </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once "../includes/footer.php"; ?>
