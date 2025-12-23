@@ -24,8 +24,7 @@ if ($cliente) {
         'bairro'     => $cliente['clientebairro'],
         'numero'     => $cliente['clientenumero'],
         'cidade'     => $cliente['clientecidade'],
-        'cpl'        => $cliente['clientecpl'],
-        'obs'        => $cliente['clienteobs']
+        'cpl'        => $cliente['clientecpl']
     ]);
 } else {
     echo json_encode(['sucesso' => false]);

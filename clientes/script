@@ -1,0 +1,13 @@
+/* Ajustando itens do Orçamento */
+ALTER TABLE  orcamentoitem ADD COLUMN largura DECIMAL(10,3) NULL;
+ALTER TABLE  orcamentoitem ADD COLUMN altura DECIMAL(10,3) NULL;
+ALTER TABLE  orcamentoitem ADD COLUMN m2 DECIMAL(10,3) NULL;
+
+/* Ajustando itens do Pedido */
+ALTER TABLE pedidoitem ADD COLUMN largura DECIMAL(10,3) NULL;
+ALTER TABLE pedidoitem ADD COLUMN altura DECIMAL(10,3) NULL;
+ALTER TABLE pedidoitem ADD COLUMN m2 DECIMAL(10,3) NULL;
+
+/* Adicionando campo de Observação Geral na tabela mestre (se ainda não fez) */
+ALTER TABLE orcamento ADD COLUMN orcamento_obs TEXT NULL;
+ALTER TABLE pedido ADD COLUMN pedido_obs TEXT NULL;

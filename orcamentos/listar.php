@@ -13,7 +13,7 @@ $f_fim    = $_GET['f_fim'] ?? '';
 // Construir consulta base
 $query = "
     SELECT o.*, c.clientenomecompleto, c.clientewhatsapp,
-           (SELECT SUM(orcamentovalortotal) 
+            (SELECT SUM(orcamentovalortotal) 
             FROM orcamentoitem i 
             WHERE i.orcamentocodigo = o.orcamentocodigo) AS total
     FROM orcamento o
@@ -190,6 +190,10 @@ $statusDisponiveis = ['Criado', 'Enviado', 'Aprovado', 'Finalizado', 'Cancelado'
             $whatsapp = preg_replace('/\D/', '', $o['clientewhatsapp'] ?? '');
             $linkAprovacao = BASE_URL . "/public/orcamento.php?c={$o['orcamentolinkaprovacao']}";
             $urlWhats = "https://api.whatsapp.com/send?phone=55{$whatsapp}&text=".urlencode("Olá, segue seu orçamento: $linkAprovacao");
+            
+            // REGRA DE BLOQUEIO
+            $statusAtual = strtolower(trim($o['orcamentosituacao']));
+            $bloqueado = in_array($statusAtual, ['aprovado', 'finalizado', 'cancelado']);
         ?>
             <div class="order-card">
                 <div class="order-header">
@@ -205,10 +209,14 @@ $statusDisponiveis = ['Criado', 'Enviado', 'Aprovado', 'Finalizado', 'Cancelado'
                 
                 <div class="action-group">
                     <?php if($whatsapp && $o['orcamentolinkaprovacao']): ?>
-                        <a href="<?= $urlWhats ?>" target="_blank" class="btn-circle btn-wa"><i class="bi bi-whatsapp"></i></a>
+                        <a href="<?= $urlWhats ?>" target="_blank" class="btn-circle btn-wa" title="Enviar WhatsApp"><i class="bi bi-whatsapp"></i></a>
                     <?php endif; ?>
-                    <a href="editar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn-circle btn-ed"><i class="bi bi-pencil"></i></a>
-                    <a href="visualizar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn-circle btn-vi"><i class="bi bi-eye"></i></a>
+                    
+                    <?php if(!$bloqueado): ?>
+                        <a href="editar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn-circle btn-ed" title="Editar Orçamento"><i class="bi bi-pencil"></i></a>
+                    <?php endif; ?>
+
+                    <a href="visualizar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn-circle btn-vi" title="Visualizar"><i class="bi bi-eye"></i></a>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -230,6 +238,10 @@ $statusDisponiveis = ['Criado', 'Enviado', 'Aprovado', 'Finalizado', 'Cancelado'
                 <tbody>
                     <?php foreach($orcamentos as $o): 
                         $whatsapp = preg_replace('/\D/', '', $o['clientewhatsapp'] ?? '');
+                        
+                        // REGRA DE BLOQUEIO
+                        $statusAtual = strtolower(trim($o['orcamentosituacao']));
+                        $bloqueado = in_array($statusAtual, ['aprovado', 'finalizado', 'cancelado']);
                     ?>
                         <tr>
                             <td class="ps-4 text-center fw-bold text-primary">#<?= $o['orcamentocodigo'] ?></td>
@@ -247,9 +259,12 @@ $statusDisponiveis = ['Criado', 'Enviado', 'Aprovado', 'Finalizado', 'Cancelado'
                             <td class="text-end fw-bold">R$ <?= number_format($o['total'] ?? 0, 2, ',', '.') ?></td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <a href="https://api.whatsapp.com/send?phone=55<?= $whatsapp ?>" target="_blank" class="btn btn-sm btn-light text-success"><i class="bi bi-whatsapp"></i></a>
-                                    <a href="visualizar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn btn-sm btn-light text-primary"><i class="bi bi-eye"></i></a>
-                                    <a href="editar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn btn-sm btn-light text-warning"><i class="bi bi-pencil"></i></a>
+                                    <a href="https://api.whatsapp.com/send?phone=55<?= $whatsapp ?>" target="_blank" class="btn btn-sm btn-light text-success" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+                                    <a href="visualizar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn btn-sm btn-light text-primary" title="Visualizar"><i class="bi bi-eye"></i></a>
+                                    
+                                    <?php if(!$bloqueado): ?>
+                                        <a href="editar.php?id=<?= $o['orcamentocodigo'] ?>" class="btn btn-sm btn-light text-warning" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>

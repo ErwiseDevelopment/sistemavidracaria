@@ -19,12 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        // ATUALIZA DADOS DO CLIENTE
+        // ATUALIZA DADOS DO CLIENTE (Removido clienteobs para evitar erro de SQL)
         $sqlClie = $pdo->prepare("
             UPDATE clientes SET
                 clientenomecompleto=?, clientewhatsapp=?, clientecep=?, 
                 clientelogradouro=?, clientenumero=?, clientecpl=?, 
-                clientebairro=?, clientecidade=?, clienteobs=?
+                clientebairro=?, clientecidade=?
             WHERE clientecodigo=?
         ");
         $sqlClie->execute([
@@ -35,8 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['clientenumero'] ?? '', 
             $_POST['clientecpl'] ?? '',
             $_POST['clientebairro'] ?? '', 
-            $_POST['clientecidade'] ?? '', 
-            $_POST['clienteobs'] ?? '',
+            $_POST['clientecidade'] ?? '',
             $_POST['clienteid']
         ]);
 
@@ -45,16 +44,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sqlItem = $pdo->prepare("
             INSERT INTO pedidoitem
-            (pedidocodigo, pedidoitemseq, produtocodigo, produtodescricao, pedidoqnt, pedidovalor, pedidodesconto, pedidovalortotal)
-            VALUES (?,?,?,?,?,?,?,?)
+            (pedidocodigo, pedidoitemseq, produtocodigo, produtodescricao, largura, altura, m2, pedidoqnt, pedidovalor, pedidodesconto, pedidovalortotal)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $totalBruto = 0;
         $seq = 1; 
         foreach($_POST['itens'] ?? [] as $i){
             if(empty($i['id'])) continue;
-            $valor = (float) $i['valor'];
-            $sqlItem->execute([$pedidoid, $seq, $i['id'], $i['nome'], 1, $valor, 0, $valor]);
+            
+            $larg = floatval($i['largura'] ?? 0);
+            $alt = floatval($i['altura'] ?? 0);
+            $valor = floatval($i['valor'] ?? 0);
+            $m2 = ($larg > 0 && $alt > 0) ? ($larg * $alt / 1000000) : 0;
+            
+            $sqlItem->execute([
+                $pedidoid, $seq, $i['id'], $i['nome'], 
+                $larg, $alt, $m2, 1, $valor, 0, $valor
+            ]);
+            
             $totalBruto += $valor;
             $seq++;
         }
@@ -97,7 +105,6 @@ $itens = $sql->fetchAll(PDO::FETCH_ASSOC);
 require_once "../includes/header.php";
 require_once "../includes/menu.php";
 
-// Limpa o número do WhatsApp para o link
 $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
 ?>
 
@@ -108,6 +115,7 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
     .status-header { background: white; padding: 1rem; border-bottom: 1px solid #edf2f7; margin-bottom: 1.5rem; }
     .total-display { background: #f0f3ff; color: var(--primary); border: 2px solid var(--primary); font-size: 1.5rem; font-weight: 800; border-radius: 12px; padding: 8px; width: 100%; max-width: 250px; }
     .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+    .input-medida { background-color: #fffdf0 !important; border: 1px solid #ffeb3b !important; font-weight: bold; text-align: center; }
 </style>
 
 <div class="status-header shadow-sm sticky-top">
@@ -119,9 +127,9 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
         <div class="d-flex align-items-center gap-2">
             <input type="text" id="valor_total_topo" class="total-display text-center" value="R$ 0,00" readonly>
             <div class="btn-group">
-                <a href="imprimir.php?id=<?= $pedidoid ?>" target="_blank" class="btn btn-warning fw-bold"><i class="bi bi-printer"></i></a>
-                <a href="desenho.php?id=<?= $pedidoid ?>" target="_blank" class="btn btn-dark fw-bold text-nowrap">Folha Desenho</a>
-                <a href="https://wa.me/55<?= $whatsLink ?>" target="_blank" class="btn btn-success fw-bold"><i class="bi bi-whatsapp"></i></a>
+                <a href="desenho.php?id=<?= $pedidoid ?>" target="_blank" class="btn btn-success fw-bold"><i class="bi bi-printer"></i> Desenho</a>
+                <a href="imprimir.php?id=<?= $pedidoid ?>" target="_blank" class="btn btn-warning fw-bold"><i class="bi bi-printer"></i> Pedido</a>
+                <a href="https://wa.me/55<?= $whatsLink ?>" target="_blank" class="btn btn-success fw-bold"><i class="bi bi-whatsapp"></i> Chamar cliente</a>
             </div>
             <a href="listar.php" class="btn btn-light rounded-pill border px-3">Sair</a>
         </div>
@@ -138,22 +146,18 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
         <div class="row">
             <div class="col-lg-8">
                 <div class="card card-custom p-4">
-                    <div class="section-title"><i class="bi bi-info-circle-fill"></i> Detalhes da Entrega e Status</div>
+                    <div class="section-title"><i class="bi bi-info-circle-fill"></i> Detalhes e Status</div>
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="small fw-bold">Previsão de Instalação</label>
+                            <label class="small fw-bold">Previsão Entrega/Instalação</label>
                             <input type="datetime-local" name="pedidoprevisaoentrega" class="form-control" value="<?= date('Y-m-d\TH:i', strtotime($pedido['pedidoprevisaoentrega'])) ?>">
                         </div>
                         <div class="col-md-4">
-                            <label class="small fw-bold">Forma de Pagamento</label>
-                            <select name="pedidoformapagamento" class="form-select">
-                                <?php foreach(['PIX','Dinheiro','Cartão de Crédito','Cartão de Débito','Boleto'] as $f): ?>
-                                    <option <?= $pedido['pedidoformapagamento'] == $f ? 'selected' : '' ?>><?= $f ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <label class="small fw-bold">Forma Pagamento</label>
+                            <input type="text" name="pedidoformapagamento" class="form-control" value="<?= $pedido['pedidoformapagamento'] ?>">
                         </div>
                         <div class="col-md-4">
-                            <label class="small fw-bold">Situação do Pedido</label>
+                            <label class="small fw-bold">Situação</label>
                             <select name="pedidosituacao" class="form-select fw-bold border-primary">
                                 <?php foreach(['Criado','Produção','Instalação','Finalizado','Cancelado'] as $s): ?>
                                     <option <?= $pedido['pedidosituacao'] == $s ? 'selected' : '' ?>><?= $s ?></option>
@@ -166,43 +170,43 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
                 <div class="card card-custom p-4">
                     <div class="section-title"><i class="bi bi-person-fill"></i> Dados do Cliente</div>
                     <div class="row g-2">
-                        <div class="col-md-4">
-                            <label class="small fw-bold">WhatsApp</label>
-                            <input type="text" name="clientewhatsapp" class="form-control" value="<?= htmlspecialchars($pedido['clientewhatsapp']) ?>">
-                        </div>
-                        <div class="col-md-8">
-                            <label class="small fw-bold">Nome Completo</label>
-                            <input type="text" name="clientenomecompleto" class="form-control" value="<?= htmlspecialchars($pedido['clientenomecompleto']) ?>" required>
-                        </div>
-                        <div class="col-md-3 col-6"><label class="small fw-bold">CEP</label><input type="text" name="clientecep" class="form-control" value="<?= $pedido['clientecep'] ?>"></div>
-                        <div class="col-md-7 col-6"><label class="small fw-bold">Logradouro</label><input type="text" name="clientelogradouro" class="form-control" value="<?= $pedido['clientelogradouro'] ?>"></div>
+                        <div class="col-md-4"><label class="small fw-bold">WhatsApp</label><input type="text" name="clientewhatsapp" class="form-control" value="<?= htmlspecialchars($pedido['clientewhatsapp']) ?>"></div>
+                        <div class="col-md-8"><label class="small fw-bold">Nome Completo</label><input type="text" name="clientenomecompleto" class="form-control" value="<?= htmlspecialchars($pedido['clientenomecompleto']) ?>" required></div>
+                        <div class="col-md-3"><label class="small fw-bold">CEP</label><input type="text" name="clientecep" class="form-control" value="<?= $pedido['clientecep'] ?>"></div>
+                        <div class="col-md-7"><label class="small fw-bold">Logradouro</label><input type="text" name="clientelogradouro" class="form-control" value="<?= $pedido['clientelogradouro'] ?>"></div>
                         <div class="col-md-2"><label class="small fw-bold">Nº</label><input type="text" name="clientenumero" class="form-control" value="<?= $pedido['clientenumero'] ?>"></div>
-                        <div class="col-md-4"><label class="small fw-bold">Bairro</label><input type="text" name="clientebairro" class="form-control" value="<?= $pedido['clientebairro'] ?>"></div>
-                        <div class="col-md-4"><label class="small fw-bold">Cidade</label><input type="text" name="clientecidade" class="form-control" value="<?= $pedido['clientecidade'] ?>"></div>
-                        <div class="col-md-4"><label class="small fw-bold">Complemento</label><input type="text" name="clientecpl" class="form-control" value="<?= $pedido['clientecpl'] ?>"></div>
-                        <div class="col-12"><label class="small fw-bold">Observações</label><textarea name="clienteobs" class="form-control" rows="1"><?= htmlspecialchars($pedido['clienteobs']) ?></textarea></div>
                     </div>
                 </div>
 
                 <div class="card card-custom p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="section-title mb-0"><i class="bi bi-cart-fill"></i> Itens do Pedido</div>
-                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalProdutos">+ Adicionar Produto</button>
+                        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalProdutos">+ Item</button>
                     </div>
                     <div class="table-responsive">
                         <table class="table align-middle" id="tabelaItens">
-                            <thead><tr class="small text-muted"><th>Produto</th><th width="150">Valor Unit.</th><th width="120" class="text-end">Total</th><th width="50"></th></tr></thead>
+                            <thead>
+                                <tr class="small text-muted">
+                                    <th>Produto</th>
+                                    <th width="90">Larg(mm)</th>
+                                    <th width="90">Alt(mm)</th>
+                                    <th width="130">Valor (R$)</th>
+                                    <th width="40"></th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 <?php foreach($itens as $k => $i): ?>
-                                <tr data-index="<?= $k ?>">
+                                <tr class="item-row">
                                     <td>
-                                        <span class="fw-bold"><?= htmlspecialchars($i['produtodescricao']) ?></span>
+                                        <span class="fw-bold d-block"><?= htmlspecialchars($i['produtodescricao']) ?></span>
+                                        <small class="text-muted"><span class="val-m2"><?= number_format($i['m2'], 3) ?></span> m²</small>
                                         <input type="hidden" name="itens[<?= $k ?>][id]" value="<?= $i['produtocodigo'] ?>">
-                                        <input type="hidden" name="itens[<?= $k ?>][nome]" value="<?= htmlspecialchars($i['produtodescricao']) ?>">
+                                        <input type="hidden" name="itens[<?= $k ?>][nome]" value="<?= htmlspecialchars($i['produtodescricao'] ?? '') ?>">
                                     </td>
-                                    <td><input class="form-control form-control-sm valor" name="itens[<?= $k ?>][valor]" value="<?= $i['pedidovalor'] ?>" step="0.01" type="number"></td>
-                                    <td class="text-end fw-bold">R$ <span class="total"><?= number_format($i['pedidovalortotal'], 2, ',', '.') ?></span></td>
-                                    <td class="text-center"><button type="button" class="btn btn-sm text-danger remover"><i class="bi bi-trash"></i></button></td>
+                                    <td><input type="number" name="itens[<?= $k ?>][largura]" class="form-control form-control-sm input-medida largura" value="<?= $i['largura'] ?>"></td>
+                                    <td><input type="number" name="itens[<?= $k ?>][altura]" class="form-control form-control-sm input-medida altura" value="<?= $i['altura'] ?>"></td>
+                                    <td><input type="number" name="itens[<?= $k ?>][valor]" class="form-control form-control-sm valor fw-bold text-primary" value="<?= $i['pedidovalor'] ?>" step="0.01"></td>
+                                    <td><button type="button" class="btn btn-sm text-danger remover"><i class="bi bi-trash"></i></button></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -213,13 +217,13 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
 
             <div class="col-lg-4">
                 <div class="card card-custom p-4 sticky-top" style="top: 110px;">
-                    <div class="section-title">Resumo Financeiro</div>
+                    <div class="section-title">Financeiro</div>
                     <div class="mb-3">
                         <label class="small fw-bold text-danger">DESCONTO (R$)</label>
                         <input type="number" name="pedidovlrdesconto" id="pedidovlrdesconto" class="form-control form-control-lg border-danger fw-bold text-danger" value="<?= $pedido['pedidovlrdesconto'] ?>" step="0.01">
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <span class="fw-bold text-muted">VALOR FINAL:</span>
+                        <span class="fw-bold text-muted">LÍQUIDO:</span>
                         <span id="label_liquido" class="h3 fw-bold text-primary mb-0">R$ 0,00</span>
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill shadow-lg fw-bold">ATUALIZAR PEDIDO</button>
@@ -235,26 +239,34 @@ $whatsLink = preg_replace('/\D/', '', $pedido['clientewhatsapp']);
 let index = <?= count($itens) ?>;
 
 function fecharModais() {
-    document.querySelectorAll('.modal.show').forEach(m => {
-        const inst = bootstrap.Modal.getInstance(m);
-        if (inst) inst.hide();
+    const modais = document.querySelectorAll('.modal.show');
+    modais.forEach(m => {
+        const instancia = bootstrap.Modal.getInstance(m) || bootstrap.Modal.getOrCreateInstance(m);
+        if(instancia) instancia.hide();
     });
     setTimeout(() => {
         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         document.body.classList.remove('modal-open');
         document.body.style = "";
-    }, 150);
+    }, 300);
 }
 
 function atualizarTotais(){
-    let total = 0;
+    let totalBruto = 0;
     document.querySelectorAll('#tabelaItens tbody tr').forEach(tr => {
-        const v = parseFloat(tr.querySelector('.valor').value) || 0;
-        tr.querySelector('.total').innerText = v.toLocaleString('pt-br', {minimumFractionDigits: 2});
-        total += v;
+        const larg = parseFloat(tr.querySelector('.largura').value) || 0;
+        const alt = parseFloat(tr.querySelector('.altura').value) || 0;
+        const valor = parseFloat(tr.querySelector('.valor').value) || 0;
+        
+        const m2 = (larg * alt) / 1000000;
+        const elM2 = tr.querySelector('.val-m2');
+        if(elM2) elM2.innerText = m2.toFixed(3);
+        
+        totalBruto += valor;
     });
+
     const desc = parseFloat(document.getElementById('pedidovlrdesconto').value) || 0;
-    const liq = total - desc;
+    const liq = totalBruto - desc;
     document.getElementById('label_liquido').innerText = liq.toLocaleString('pt-br', {style: 'currency', currency: 'BRL'});
     document.getElementById('valor_total_topo').value = liq.toLocaleString('pt-br', {style: 'currency', currency: 'BRL'});
 }
@@ -264,15 +276,22 @@ document.addEventListener('click', function(e) {
         const tr = e.target.closest('tr');
         const id = tr.dataset.id;
         const nome = tr.dataset.nome;
-        const valor = parseFloat(tr.dataset.valor || 0);
+        const valor = parseFloat(tr.dataset.preco || 0);
 
         const tbody = document.querySelector('#tabelaItens tbody');
         const row = document.createElement('tr');
+        row.className = "item-row";
         row.innerHTML = `
-            <td><span class="fw-bold">${nome}</span><input type="hidden" name="itens[${index}][id]" value="${id}"><input type="hidden" name="itens[${index}][nome]" value="${nome}"></td>
-            <td><input class="form-control form-control-sm valor" name="itens[${index}][valor]" value="${valor.toFixed(2)}" step="0.01" type="number"></td>
-            <td class="text-end fw-bold">R$ <span class="total">${valor.toLocaleString('pt-br', {minimumFractionDigits:2})}</span></td>
-            <td class="text-center"><button type="button" class="btn btn-sm text-danger remover"><i class="bi bi-trash"></i></button></td>
+            <td>
+                <span class="fw-bold d-block">${nome}</span>
+                <small class="text-muted"><span class="val-m2">0.000</span> m²</small>
+                <input type="hidden" name="itens[${index}][id]" value="${id}">
+                <input type="hidden" name="itens[${index}][nome]" value="${nome}">
+            </td>
+            <td><input type="number" name="itens[${index}][largura]" class="form-control form-control-sm input-medida largura" value="0"></td>
+            <td><input type="number" name="itens[${index}][altura]" class="form-control form-control-sm input-medida altura" value="0"></td>
+            <td><input type="number" name="itens[${index}][valor]" class="form-control form-control-sm valor fw-bold text-primary" value="${valor.toFixed(2)}" step="0.01"></td>
+            <td><button type="button" class="btn btn-sm text-danger remover"><i class="bi bi-trash"></i></button></td>
         `;
         tbody.appendChild(row);
         index++;
@@ -286,7 +305,9 @@ document.addEventListener('click', function(e) {
     }
 });
 
-document.addEventListener('input', e => { if(e.target.matches('.valor, #pedidovlrdesconto')) atualizarTotais(); });
+document.addEventListener('input', e => { 
+    if(e.target.matches('.largura, .altura, .valor, #pedidovlrdesconto')) atualizarTotais(); 
+});
 
 window.onload = atualizarTotais;
 </script>

@@ -6,18 +6,21 @@ if(!$codigo){
     die("Código do orçamento não informado.");
 }
 
+// Busca orçamento e dados completos do cliente
 $sql = $pdo->prepare("SELECT o.*, c.* FROM orcamento o JOIN clientes c ON o.clienteid = c.clientecodigo WHERE orcamentolinkaprovacao=?");
 $sql->execute([$codigo]);
-$orcamento = $sql->fetch();
+$orcamento = $sql->fetch(PDO::FETCH_ASSOC);
+
 if(!$orcamento){
     die("Orçamento não encontrado.");
 }
 
-$itens = $pdo->prepare("SELECT * FROM orcamentoitem WHERE orcamentocodigo=?");
-$itens->execute([$orcamento['orcamentocodigo']]);
-$itens = $itens->fetchAll();
+// Busca itens do orçamento
+$sqlItens = $pdo->prepare("SELECT * FROM orcamentoitem WHERE orcamentocodigo=?");
+$sqlItens->execute([$orcamento['orcamentocodigo']]);
+$itens = $sqlItens->fetchAll(PDO::FETCH_ASSOC);
 
-$totalGeral = array_sum(array_column($itens,'orcamentovalortotal'));
+$totalGeral = $orcamento['orcamentovalortotal'];
 ?>
 
 <!DOCTYPE html>
@@ -28,149 +31,163 @@ $totalGeral = array_sum(array_column($itens,'orcamentovalortotal'));
     <title>Orçamento #<?= $orcamento['orcamentocodigo'] ?> | Visa Vidros</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --primary: #4e73df; --dark: #0f172a; --light-bg: #f8f9fc; }
-        body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; color: #333; }
+        :root { --primary: #4361ee; --dark: #0f172a; --bg-body: #f1f5f9; }
+        body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; color: #334155; }
         
-        .main-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: none; overflow: hidden; }
-        .header-gradient { background: linear-gradient(135deg, var(--dark) 0%, #1e293b 100%); color: white; padding: 30px 20px; }
+        .main-card { background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.08); border: none; overflow: hidden; margin-top: 2rem; margin-bottom: 3rem; }
         
-        .section-title { border-left: 4px solid var(--primary); padding-left: 10px; font-weight: 700; color: var(--dark); margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+        .header-top { background: var(--dark); color: white; padding: 40px; border-bottom: 5px solid var(--primary); }
+        .brand-name { font-weight: 800; font-size: 1.8rem; letter-spacing: -1px; margin-bottom: 0; }
         
-        .info-label { color: #8492a6; font-size: 0.8rem; text-transform: uppercase; font-weight: 600; margin-bottom: 2px; }
-        .info-value { font-weight: 500; color: var(--dark); margin-bottom: 15px; }
+        .section-title { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .section-title::after { content: ""; height: 1px; background: #e2e8f0; flex-grow: 1; }
+        
+        .info-label { color: #94a3b8; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
+        .info-value { font-weight: 600; color: var(--dark); font-size: 0.95rem; margin-bottom: 12px; }
 
-        /* Estilo para Tabela/Cards Mobile */
+        /* Grid de Endereço */
+        .address-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; }
+
+        .table thead th { background: #f8fafc; text-transform: uppercase; font-size: 0.65rem; color: #64748b; padding: 12px; border: none; }
+        .table tbody td { padding: 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .badge-medida { background: #eef2ff; color: var(--primary); font-weight: 700; font-size: 0.75rem; padding: 5px 10px; border-radius: 6px; }
+
+        .obs-wrapper { background: #fdfcf0; border: 1px solid #fef3c7; border-left: 5px solid #f59e0b; border-radius: 12px; padding: 25px; margin: 30px 0; position: relative; }
+        .obs-icon { position: absolute; top: -12px; left: 20px; background: #f59e0b; color: white; padding: 2px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; }
+        .obs-content { color: #92400e; font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; }
+
+        .total-banner { background: var(--dark); color: white; border-radius: 20px; padding: 30px; text-align: right; }
+        .total-amount { font-size: 2.5rem; font-weight: 800; display: block; line-height: 1; }
+
         @media (max-width: 768px) {
-            .hide-mobile { display: none; }
-            .item-card { background: #fff; border: 1px solid #edf2f7; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
-            .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dashed #edf2f7; padding-bottom: 5px; }
-            .item-total { background: #f8faff; padding: 10px; border-radius: 8px; font-weight: 700; color: var(--primary); }
+            .address-grid { grid-template-columns: 1fr; gap: 0; }
+            .header-top { padding: 30px 20px; text-align: center; }
+            .total-banner { text-align: center; }
         }
-
-        .total-box { background: var(--dark); color: white; border-radius: 12px; padding: 25px; text-align: right; }
-        .btn-approve { background: #25D366; border: none; color: white; font-weight: 700; padding: 15px; border-radius: 12px; transition: 0.3s; width: 100%; font-size: 1.1rem; }
-        .btn-approve:hover { background: #128c7e; transform: translateY(-2px); }
-        
-        .footer-erwise { font-size: 0.8rem; color: #a0aec0; text-align: center; margin-top: 40px; }
-        .footer-erwise a { color: #718096; text-decoration: none; font-weight: 600; }
     </style>
 </head>
 <body>
 
-<div class="container mt-4 mb-5">
+<div class="container">
     <div class="main-card">
-        <div class="header-gradient d-flex justify-content-between align-items-center">
+        <div class="header-top d-flex flex-wrap justify-content-between align-items-center">
             <div>
-                <h2 class="mb-0 fw-bold">VISA VIDROS</h2>
-                <p class="mb-0 opacity-75">Orçamento Digital</p>
+                <h1 class="brand-name text-uppercase">Visa Vidros</h1>
+                <p class="mb-0 opacity-75 small fw-bold">ORÇAMENTO DIGITAL</p>
             </div>
-            <div class="text-end">
-                <span class="badge bg-primary px-3 py-2 mb-2">#<?= $orcamento['orcamentocodigo'] ?></span><br>
-                <small class="opacity-75"><?= date('d/m/Y', strtotime($orcamento['orcamentodatacriacao'])) ?></small>
+            <div class="text-md-end mt-3 mt-md-0">
+                <div class="h4 fw-800 mb-0">Nº <?= $orcamento['orcamentocodigo'] ?></div>
+                <div class="small opacity-75">Emitido em: <?= date('d/m/Y', strtotime($orcamento['orcamentodatacriacao'])) ?></div>
             </div>
         </div>
 
-        <div class="p-4">
+        <div class="p-4 p-md-5">
             <div class="row mb-4">
-                <div class="col-md-6 border-end">
-                    <h6 class="section-title">Dados do Cliente</h6>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="info-label">Nome Completo</div>
-                            <div class="info-value"><?= htmlspecialchars($orcamento['clientenomecompleto']) ?></div>
+                <div class="col-12">
+                    <div class="section-title">Dados do Cliente</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-label">Nome Completo</div>
+                    <div class="info-value"><?= htmlspecialchars($orcamento['clientenomecompleto']) ?></div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-label">WhatsApp</div>
+                    <div class="info-value"><?= $orcamento['clientewhatsapp'] ?></div>
+                </div>
+                <div class="col-md-3">
+                    <div class="info-label">CEP</div>
+                    <div class="info-value"><?= $orcamento['clientecep'] ?></div>
+                </div>
+
+                <div class="col-12">
+                    <div class="address-grid">
+                        <div>
+                            <div class="info-label">Logradouro</div>
+                            <div class="info-value"><?= htmlspecialchars($orcamento['clientelogradouro']) ?></div>
                         </div>
-                        <div class="col-6">
-                            <div class="info-label">WhatsApp</div>
-                            <div class="info-value"><?= $orcamento['clientewhatsapp'] ?></div>
+                        <div>
+                            <div class="info-label">Número</div>
+                            <div class="info-value"><?= $orcamento['clientenumero'] ?: 'S/N' ?></div>
                         </div>
-                        <div class="col-6">
-                            <div class="info-label">Cidade</div>
-                            <div class="info-value"><?= htmlspecialchars($orcamento['clientecidade']) ?></div>
-                        </div>
-                        <div class="col-12">
-                            <div class="info-label">Endereço</div>
-                            <div class="info-value"><?= htmlspecialchars($orcamento['clientelogradouro']) ?>, <?= $orcamento['clientenumero'] ?></div>
+                        <div>
+                            <div class="info-label">Bairro</div>
+                            <div class="info-value"><?= htmlspecialchars($orcamento['clientebairro']) ?></div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 ps-md-4 mt-4 mt-md-0">
-                    <h6 class="section-title">Dados do Fornecedor</h6>
-                    <div class="info-label">Empresa</div>
-                    <div class="info-value text-primary fw-bold">Visa Vidros ABC</div>
-                    <div class="info-label">Contato</div>
-                    <div class="info-value">(11) 99450-7922</div>
-                    <div class="info-label">Endereço</div>
-                    <div class="info-value">Rua Minotauro, 197 - Jd. Estádio</div>
+
+                <div class="col-md-6">
+                    <div class="info-label">Cidade / UF</div>
+                    <div class="info-value"><?= htmlspecialchars($orcamento['clientecidade']) ?> / SP</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-label">Complemento</div>
+                    <div class="info-value"><?= htmlspecialchars($orcamento['clientecpl'] ?: 'Não informado') ?></div>
                 </div>
             </div>
 
-            <h6 class="section-title">Detalhamento dos Serviços</h6>
-            <div class="table-responsive hide-mobile">
+            <div class="section-title">Itens do Orçamento</div>
+            <div class="table-responsive d-none d-md-block mb-4">
                 <table class="table align-middle">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
-                            <th class="border-0">Descrição</th>
-                            <th class="text-center border-0">Qtd</th>
-                            <th class="text-end border-0">Unitário</th>
-                            <th class="text-end border-0">Total</th>
+                            <th width="50%">Descrição</th>
+                            <th class="text-center">Dimensões</th>
+                            <th class="text-center">Qtd</th>
+                            <th class="text-end">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach($itens as $i): ?>
                         <tr>
-                            <td class="fw-500 text-dark"><?= htmlspecialchars($i['produtodescricao']) ?></td>
-                            <td class="text-center"><?= number_format($i['orcamentoqnt'],0) ?></td>
-                            <td class="text-end">R$ <?= number_format($i['orcamentovalor'],2,",",".") ?></td>
-                            <td class="text-end fw-bold">R$ <?= number_format($i['orcamentovalortotal'],2,",",".") ?></td>
+                            <td>
+                                <div class="fw-bold text-dark"><?= htmlspecialchars($i['produtodescricao']) ?></div>
+                                <div class="small text-muted"><?= number_format($i['m2'] ?? 0, 3) ?> m²</div>
+                            </td>
+                            <td class="text-center"><span class="badge-medida"><?= $i['largura'] ?> x <?= $i['altura'] ?> mm</span></td>
+                            <td class="text-center"><?= (int)$i['orcamentoqnt'] ?></td>
+                            <td class="text-end fw-bold text-dark">R$ <?= number_format($i['orcamentovalortotal'], 2, ",", ".") ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
 
-            <div class="d-md-none">
+            <div class="d-md-none mb-4">
                 <?php foreach($itens as $i): ?>
-                <div class="item-card">
-                    <div class="fw-bold text-dark mb-2"><?= htmlspecialchars($i['produtodescricao']) ?></div>
-                    <div class="item-row">
-                        <span class="text-muted small">Quantidade</span>
-                        <span><?= number_format($i['orcamentoqnt'],0) ?></span>
-                    </div>
-                    <div class="item-row">
-                        <span class="text-muted small">Valor Unitário</span>
-                        <span>R$ <?= number_format($i['orcamentovalor'],2,",",".") ?></span>
-                    </div>
-                    <div class="item-total d-flex justify-content-between mt-2">
-                        <span>Total do Item</span>
-                        <span>R$ <?= number_format($i['orcamentovalortotal'],2,",",".") ?></span>
+                <div class="p-3 border rounded-3 mb-2">
+                    <div class="fw-bold text-dark"><?= htmlspecialchars($i['produtodescricao']) ?></div>
+                    <div class="small text-muted mb-2">Medidas: <?= $i['largura'] ?>x<?= $i['altura'] ?> mm</div>
+                    <div class="d-flex justify-content-between">
+                        <span>Qtd: <?= (int)$i['orcamentoqnt'] ?></span>
+                        <span class="fw-bold text-primary">R$ <?= number_format($i['orcamentovalortotal'], 2, ",", ".") ?></span>
                     </div>
                 </div>
                 <?php endforeach; ?>
             </div>
 
-            <div class="row mt-5 align-items-center">
-                <div class="col-md-6 mb-4 mb-md-0">
-                    <div class="info-label">Forma de Pagamento</div>
-                    <div class="info-value mb-0"><?= $orcamento['orcamentoformapagamento'] ?? 'A combinar' ?></div>
+            <?php if(!empty($orcamento['orcamento_obs'])): ?>
+            <div class="obs-wrapper shadow-sm">
+                <div class="obs-icon">Notas Técnicas / Observações</div>
+                <div class="obs-content"><?= nl2br(htmlspecialchars($orcamento['orcamento_obs'])) ?></div>
+            </div>
+            <?php endif; ?>
+
+            <div class="row align-items-end g-4">
+                <div class="col-md-6">
+                    <div class="info-label">Forma de Pagamento Prevista</div>
+                    <div class="info-value mb-0"><?= $orcamento['orcamentoformapagamento'] ?: 'A combinar' ?></div>
                 </div>
                 <div class="col-md-6">
-                    <div class="total-box">
-                        <div class="text-white-50 small fw-bold">VALOR TOTAL DO ORÇAMENTO</div>
-                        <div class="display-6 fw-bold">R$ <?= number_format($totalGeral,2,",",".") ?></div>
+                    <div class="total-banner">
+                        <span class="text-white-50 small fw-bold text-uppercase">Total do Orçamento</span>
+                        <span class="total-amount">R$ <?= number_format($totalGeral, 2, ",", ".") ?></span>
                     </div>
                 </div>
             </div>
-
-            
-        </div>
-    </div>
-
-    <div class="footer-erwise">
-        <p>Desenvolvido por <strong><a href="https://erwise.com.br" target="_blank">erwise.com.br</a></strong></p>
-        <div>
-            <a href="https://www.instagram.com/erwisedev" class="mx-2"><i class="bi bi-instagram"></i></a>
-           
         </div>
     </div>
 </div>
